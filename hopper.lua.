@@ -1,0 +1,67 @@
+-- LocalScript (e.g. in StarterPlayerScripts or StarterGui)
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Load Orion if you have it available as a module script or via HttpGet
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+
+local Window = OrionLib:MakeWindow({
+    Name = "Server Hopper",
+    HidePremium = true,
+    SaveConfig = false,
+    IntroText = "Jump to another public server"
+})
+
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+MainTab:AddButton({
+    Name = "Start Server Hop",
+    Callback = function()
+        local placeId = game.PlaceId
+        local success, result = pcall(function()
+            return TeleportService:GetPlayerPlaceInstancesAsync(placeId)
+        end)
+
+        if not success or not result then
+            OrionLib:MakeNotification({
+                Name = "Server Hop",
+                Content = "Could not fetch server list.",
+                Time = 5,
+                Image = "rbxassetid://4483345998",
+                BackgroundColor = Color3.fromRGB(255, 85, 85)
+            })
+            return
+        end
+
+        local instances = result.Instances or {}
+        if typeof(result) == "table" and result.Data then
+            instances = result.Data
+        end
+
+        local available = {}
+        for _, instance in ipairs(instances) do
+            if instance and instance.Id and instance.CurrentPlayers < instance.MaxPlayers then
+                table.insert(available, instance)
+            end
+        end
+
+        if #available == 0 then
+            OrionLib:MakeNotification({
+                Name = "Server Hop",
+                Content = "No open servers found.",
+                Time = 5,
+                Image = "rbxassetid://4483345998",
+                BackgroundColor = Color3.fromRGB(255, 170, 0)
+            })
+            return
+        end
+
+        local target = available[math.random(1, #available)]
+        TeleportService:TeleportToPlaceInstance(placeId, target.Id, LocalPlayer)
+    end
+})
